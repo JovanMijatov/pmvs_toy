@@ -147,7 +147,7 @@ void Cdog::run(const std::vector<unsigned char>& image,
   for (int y = 0; y < h; ++y)
     resultgrids[y].resize(w);
 
-  const float scalestep = pow(2.0f, 1 / 2.0f);
+  const float scalestep = pow(2.0f, 1.5f / 2.0f);
   //const float scalestep = pow(2.0f, 1.0f);
   const int steps = max(4, (int)ceil(log(m_lastScale / m_firstScale) / log(scalestep)));
   

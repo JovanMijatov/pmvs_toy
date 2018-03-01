@@ -29,7 +29,7 @@ void CfindMatch::updateThreshold(void) {
   m_nccThreshold -= 0.05f;
   m_nccThresholdBefore -= 0.05f;
   
-  m_countThreshold1 = 2;
+  m_countThreshold1 = 4;
 }
 
 void CfindMatch::init(const Soption& option) {
@@ -199,6 +199,7 @@ void CfindMatch::run(void) {
   //----------------------------------------------------------------------
   // Seed generation
   m_seed.run();
+  write("samo_seedovi", true, false, false);
   m_seed.clear();
   
   ++m_depth;
@@ -208,9 +209,17 @@ void CfindMatch::run(void) {
   // Expansion
   const int TIME = 3;
   for (int t = 0; t < TIME; ++t) {
+	 // write("test", true, false, false);
     m_expand.run();
-
+	//if (t == 0) write("exp1noFilter_", true, false, false);
+	//if (t == 1) write("exp2noFilter_", true, false, false);
+	//if (t == 2) write("exp3noFilter_", true, false, false);
+	
     m_filter.run();
+	
+
+	if (t == 0) write("test2", true, false, false);
+	//if (t == 1) write("exp2withFilter_t7", true, false, false);
         
     updateThreshold();
 
@@ -224,10 +233,27 @@ void CfindMatch::run(void) {
     
     ++m_depth;
   }
+  finalOptimization();
   time(&tv);
   cerr << "---- Total: " << (tv - curtime)/CLOCKS_PER_SEC << " secs ----" << endl;
 }
 
+int CfindMatch::finalOptimization()
+{
+	std::cout << "Entering Final Optimization." << std::endl;
+	for (int i = 0; i < m_pos.m_ppatches.size(); i++)
+	{
+		Cpatch patch = *m_pos.m_ppatches[i];
+		this->m_optim.refinePatch_additional(patch, 0, 15, 0);
+		this->m_optim.refinePatch_additional(patch, 0, 3, 1);
+
+		m_pos.m_optimized_patches.push_back(patch);
+	}
+	return 1;
+}
+
 void CfindMatch::write(const std::string prefix, bool bExportPLY, bool bExportPatch, bool bExportPSet) {
   m_pos.writePatches2(prefix, bExportPLY, bExportPatch, bExportPSet);
+  m_pos.writePatches3(prefix, bExportPLY, bExportPatch, bExportPSet);
+  m_pos.writePatchesAndImageProjections("", m_images.size());
 }

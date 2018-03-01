@@ -42,6 +42,8 @@ int main(int argc, char* argv[]) {
 
   PMVS3::CfindMatch findMatch;
   findMatch.init(option);
+  findMatch.m_wsize_refine_scale_1 = 11;
+  findMatch.m_wsize_refine_scale_1 = 5;
   findMatch.run();
 
   bool bExportPLY = true;

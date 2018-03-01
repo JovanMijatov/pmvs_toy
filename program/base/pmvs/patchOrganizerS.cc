@@ -118,6 +118,49 @@ void CpatchOrganizerS::writePatches2(const std::string prefix, bool bExportPLY, 
   }
 }
 
+void CpatchOrganizerS::writePatches3(const std::string prefix, bool bExportPLY, bool bExportPatch, bool bExportPSet) {
+	collectPatches(1);
+
+	if (bExportPLY)
+	{
+		char buffer[1024];
+		sprintf(buffer, "%s1.ply", prefix.c_str());
+		writePLY_cpatch(m_optimized_patches, buffer);
+	}
+
+	if (bExportPatch)
+	{
+		char buffer[1024];
+		sprintf(buffer, "%s.patch", prefix.c_str());
+		ofstream ofstr;
+		ofstr.open(buffer);
+		ofstr << "PATCHES" << endl
+			<< (int)m_ppatches.size() << endl;
+		for (int p = 0; p < (int)m_ppatches.size(); ++p) {
+			Cpatch patch = *m_ppatches[p];
+			index2image(patch);
+			ofstr << patch << "\n";
+		}
+		ofstr.close();
+	}
+
+	if (bExportPSet)
+	{
+		char buffer[1024];
+		sprintf(buffer, "%s.pset", prefix.c_str());
+		ofstream ofstr;
+		ofstr.open(buffer);
+		for (int p = 0; p < (int)m_ppatches.size(); ++p)
+			ofstr << m_ppatches[p]->m_coord[0] << ' '
+			<< m_ppatches[p]->m_coord[1] << ' '
+			<< m_ppatches[p]->m_coord[2] << ' '
+			<< m_ppatches[p]->m_normal[0] << ' '
+			<< m_ppatches[p]->m_normal[1] << ' '
+			<< m_ppatches[p]->m_normal[2] << "\n";
+		ofstr.close();
+	}
+}
+
 void CpatchOrganizerS::readPatches(void) {
   // Read-in existing reconstructed points. set m_fix to one for non-targeting images
   for (int i = 0; i < m_fm.m_tnum; ++i) {
@@ -539,6 +582,7 @@ void CpatchOrganizerS::findNeighbors(const Patch::Cpatch& patch,
                                      const int skipvis) {
   const float radius = 1.5 * margin * m_fm.m_expand.computeRadius(patch);
   
+
   vector<int>::const_iterator bimage = patch.m_images.begin();
   vector<int>::const_iterator eimage = patch.m_images.end();
   vector<Vec2i>::const_iterator bgrid = patch.m_grids.begin();
@@ -779,6 +823,124 @@ void CpatchOrganizerS::writePLY(const std::vector<Ppatch>& patches,
       ++bpatch;
   }
   ofstr.close();  
+}
+
+void CpatchOrganizerS::writePLY_cpatch(const std::vector<Cpatch>& patches,
+	const std::string filename) {
+	ofstream ofstr;
+	ofstr.open(filename.c_str());
+	ofstr << "ply" << '\n'
+		<< "format ascii 1.0" << '\n'
+		<< "element vertex " << (int)patches.size() << '\n'
+		<< "property float x" << '\n'
+		<< "property float y" << '\n'
+		<< "property float z" << '\n'
+		<< "property float nx" << '\n'
+		<< "property float ny" << '\n'
+		<< "property float nz" << '\n'
+		<< "property uchar diffuse_red" << '\n'
+		<< "property uchar diffuse_green" << '\n'
+		<< "property uchar diffuse_blue" << '\n'
+		<< "end_header" << '\n';
+
+	vector<Cpatch>::const_iterator bpatch = patches.begin();
+	vector<Cpatch>::const_iterator bend = patches.end();
+
+	while (bpatch != bend) {
+		// Get color
+		Vec3i color;
+
+		const int mode = 0;
+		// 0: color from images
+		// 1: fix
+		// 2: angle
+		if (mode == 0) {
+			int denom = 0;
+			Vec3f colorf;
+			for (int i = 0; i < (int)(*bpatch).m_images.size(); ++i) {
+				const int image = (*bpatch).m_images[i];
+				colorf += m_fm.m_pss.getColor((*bpatch).m_coord, image, m_fm.m_level);
+				denom++;
+			}
+			colorf /= denom;
+			color[0] = min(255, (int)floor(colorf[0] + 0.5f));
+			color[1] = min(255, (int)floor(colorf[1] + 0.5f));
+			color[2] = min(255, (int)floor(colorf[2] + 0.5f));
+		}
+		else if (mode == 1) {
+			if ((*bpatch).m_tmp == 1.0f) {
+				color[0] = 255;
+				color[1] = 0;
+				color[2] = 0;
+			}
+			else {
+				color[0] = 255;
+				color[1] = 255;
+				color[2] = 255;
+			}
+		}
+		else if (mode == 2) {
+			if ((*bpatch).m_tmp == 1.0f) {
+				color[0] = 255;
+				color[1] = 0;
+				color[2] = 0;
+			}
+			else {
+				color[0] = 255;
+				color[1] = 255;
+				color[2] = 255;
+			}
+		}
+
+		ofstr << (*bpatch).m_coord[0] << ' '
+			<< (*bpatch).m_coord[1] << ' '
+			<< (*bpatch).m_coord[2] << ' '
+			<< (*bpatch).m_normal[0] << ' '
+			<< (*bpatch).m_normal[1] << ' '
+			<< (*bpatch).m_normal[2] << ' '
+			<< color[0] << ' ' << color[1] << ' ' << color[2] << '\n';
+		++bpatch;
+	}
+	ofstr.close();
+}
+
+
+void CpatchOrganizerS::writePatchesAndImageProjections(const std::string prefix, int numOfImgs) {
+	collectPatches(1);
+
+	std::ofstream file;
+	file.open(prefix + "patches.txt");
+	file << "Number_of_patches ";
+	file << m_ppatches.size() << std::endl;
+	file << "Number_of_cameras ";
+	file << numOfImgs << std::endl;
+	int counter = 0;
+	int scale;
+	
+
+	if (m_fm.m_level == 0) scale = 1;
+	else if (m_fm.m_level == 1) scale = 2;
+	else{
+		scale = pow(2, m_fm.m_level);
+	}
+
+	for (int p = 0; p < m_ppatches.size(); p++) {
+		file << "Patch_ID " << counter << std::endl;
+		file << "Position_x " << m_ppatches[p]->m_coord[0] << std::endl;
+		file << "Position_y " << m_ppatches[p]->m_coord[1] << std::endl;
+		file << "Position_z " << m_ppatches[p]->m_coord[2] << std::endl;
+
+		
+
+		for (int i = 0; i < m_ppatches[p]->m_images.size(); i++) {
+			file << "Camera " << m_ppatches[p]->m_images[i] << std::endl;
+			file << "Camera_position_x " << m_ppatches[p]->m_grids[i][0] * scale * m_fm.m_csize << std::endl;
+			file << "Camera_position_y " << m_ppatches[p]->m_grids[i][1] * scale * m_fm.m_csize << std::endl;
+			file << "Camera_end" << std::endl;
+		}
+		file << "Patch_end" << std::endl;
+		counter++;
+	}
 }
 
 void CpatchOrganizerS::writePLY(const std::vector<Ppatch>& patches,

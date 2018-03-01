@@ -111,7 +111,7 @@ void Cexpand::expandThread(void) {
 void Cexpand::findEmptyBlocks(const Ppatch& ppatch,
 			      std::vector<std::vector<Vec4f> >& canCoords) {
   // dnum must be at most 8, because m_dflag is char
-  const int dnum = 6;
+  const int dnum = 8;
   const Cpatch& patch = *ppatch;
 
   // Empty six directions
@@ -135,13 +135,13 @@ void Cexpand::findEmptyBlocks(const Ppatch& ppatch,
   // the first condition (neighbors), and no expansion will occur.
   // ----------------------------------------------------------------------
   // Minimum number of images required to obtain high res results, and
-  // explor empty blocks.
+  // explore empty blocks.
   const float radius = computeRadius(patch);
-  const float radiuslow = radius / 6.0f;//2.0f;
-  const float radiushigh = radius * 2.5f;//2.0f;//1.5f;
+  const float radiuslow = radius / 8.0f;//2.0f;
+  const float radiushigh = radius * 1.5f;//2.0f;//1.5f;
   
   vector<Ppatch> neighbors;
-  m_fm.m_pos.findNeighbors(patch, neighbors, 1, 4.0f);//3.0f);
+  m_fm.m_pos.findNeighbors(patch, neighbors, 1, 2.5f);//3.0f);
 
   vector<Ppatch>::iterator bpatch = neighbors.begin();
   vector<Ppatch>::iterator epatch = neighbors.end();
@@ -243,6 +243,7 @@ int Cexpand::expandSub(const Ppatch& orgppatch, const int id,
 
   //-----------------------------------------------------------------
   m_fm.m_optim.refinePatch(patch, id, 100);
+ // m_fm.m_optim.refinePatch_additional(patch, id, 5);
 
   //-----------------------------------------------------------------
   if (m_fm.m_optim.postProcess(patch, id, 0)) {

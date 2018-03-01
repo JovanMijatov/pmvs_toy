@@ -348,7 +348,7 @@ void Coptim::sortImages(Cpatch& patch) const{
     //----------------------------------------------------------------------
     //Sort and grab the best m_tau images. All the other images don't
     //matter.  First image is the reference and fixed
-    const float threshold = cos(5.0 * M_PI / 180.0);
+    const float threshold = cos(10.0 * M_PI / 180.0);
     vector<int> indexes, indexes2;
     vector<float> units, units2;
     vector<Vec4f> rays, rays2;
@@ -530,6 +530,24 @@ void Coptim::refinePatch(Cpatch& patch, const int id,
     return;
 }
 
+void Coptim::refinePatch_additional(Cpatch& patch, const int id,
+	const int time, int level) {
+	if (level == 0)
+	{
+		if (!refinePatchBFGS_finetune_level1(patch, id, 1000, 1))
+			std::cout << "refinePatchBFGS failed!" << std::endl;
+	}
+	else
+	{
+		if (!refinePatchBFGS_finetune_level2(patch, id, 1000, 1))
+			std::cout << "refinePatchBFGS failed!" << std::endl;
+	}
+	
+
+	if (patch.m_images.empty())
+		return;
+}
+
 //----------------------------------------------------------------------
 // BFGS functions
 //----------------------------------------------------------------------
@@ -610,6 +628,158 @@ double Coptim::my_f(unsigned n, const double *x, double *grad, void *my_func_dat
   return ret;
 }
 
+double Coptim::my_f2(unsigned n, const double *x, double *grad, void *my_func_data)
+{
+	double xs[3] = { x[0], x[1], x[2] };
+	const int id = *((int*)my_func_data);
+
+	const float angle1 = xs[1] * m_one->m_ascalesT[id];
+	const float angle2 = xs[2] * m_one->m_ascalesT[id];
+
+	double ret = 0.0;
+
+	//?????
+	const double bias = 0.0f;//2.0 - exp(- angle1 * angle1 / sigma2) - exp(- angle2 * angle2 / sigma2);
+
+	Vec4f coord, normal;
+	m_one->decode(coord, normal, xs, id);
+
+	const int index = m_one->m_indexesT[id][0];
+	Vec4f pxaxis, pyaxis;
+	m_one->getPAxes(index, coord, normal, pxaxis, pyaxis);
+
+	const int size = min(m_one->m_fm.m_tau, (int)m_one->m_indexesT[id].size());
+	const int mininum = min(m_one->m_fm.m_minImageNumThreshold, size);
+
+	for (int i = 0; i < size; ++i) {
+		int flag;
+		flag = m_one->grabTex(coord, pxaxis, pyaxis, normal, m_one->m_indexesT[id][i],
+			m_one->m_fm.m_wsize_refine_scale_1, m_one->m_texsT[id][i]);
+
+		if (flag == 0)
+			m_one->normalize(m_one->m_texsT[id][i]);
+	}
+
+	const int pairwise = 0;
+	if (pairwise) {
+		double ans = 0.0f;
+		int denom = 0;
+		for (int i = 0; i < size; ++i) {
+			for (int j = i + 1; j < size; ++j) {
+				if (m_one->m_texsT[id][i].empty() || m_one->m_texsT[id][j].empty())
+					continue;
+
+				ans += robustincc(1.0 - m_one->dot(m_one->m_texsT[id][i], m_one->m_texsT[id][j]));
+				denom++;
+			}
+		}
+		if (denom <
+			//m_one->m_fm.m_minImageNumThreshold *
+			//(m_one->m_fm.m_minImageNumThreshold - 1) / 2)
+			mininum * (mininum - 1) / 2)
+			ret = 2.0f;
+		else
+			ret = ans / denom + bias;
+	}
+	else {
+		if (m_one->m_texsT[id][0].empty())
+			return 2.0;
+
+		double ans = 0.0f;
+		int denom = 0;
+		for (int i = 1; i < size; ++i) {
+			if (m_one->m_texsT[id][i].empty())
+				continue;
+			ans +=
+				robustincc(1.0 - m_one->dot(m_one->m_texsT[id][0], m_one->m_texsT[id][i]));
+			denom++;
+		}
+		//if (denom < m_one->m_fm.m_minImageNumThreshold - 1)
+		if (denom < mininum - 1)
+			ret = 2.0f;
+		else
+			ret = ans / denom + bias;
+	}
+
+	return ret;
+}
+
+double Coptim::my_f3(unsigned n, const double *x, double *grad, void *my_func_data)
+{
+	double xs[3] = { x[0], x[1], x[2] };
+	const int id = *((int*)my_func_data);
+
+	const float angle1 = xs[1] * m_one->m_ascalesT[id];
+	const float angle2 = xs[2] * m_one->m_ascalesT[id];
+
+	double ret = 0.0;
+
+	//?????
+	const double bias = 0.0f;//2.0 - exp(- angle1 * angle1 / sigma2) - exp(- angle2 * angle2 / sigma2);
+
+	Vec4f coord, normal;
+	m_one->decode(coord, normal, xs, id);
+
+	const int index = m_one->m_indexesT[id][0];
+	Vec4f pxaxis, pyaxis;
+	m_one->getPAxes(index, coord, normal, pxaxis, pyaxis);
+
+	const int size = min(m_one->m_fm.m_tau, (int)m_one->m_indexesT[id].size());
+	const int mininum = min(m_one->m_fm.m_minImageNumThreshold, size);
+
+	for (int i = 0; i < size; ++i) {
+		int flag;
+		flag = m_one->grabTex(coord, pxaxis, pyaxis, normal, m_one->m_indexesT[id][i],
+			m_one->m_fm.m_wsize_refine_scale_2, m_one->m_texsT[id][i]);
+
+		if (flag == 0)
+			m_one->normalize(m_one->m_texsT[id][i]);
+	}
+
+	const int pairwise = 0;
+	if (pairwise) {
+		double ans = 0.0f;
+		int denom = 0;
+		for (int i = 0; i < size; ++i) {
+			for (int j = i + 1; j < size; ++j) {
+				if (m_one->m_texsT[id][i].empty() || m_one->m_texsT[id][j].empty())
+					continue;
+
+				ans += robustincc(1.0 - m_one->dot(m_one->m_texsT[id][i], m_one->m_texsT[id][j]));
+				denom++;
+			}
+		}
+		if (denom <
+			//m_one->m_fm.m_minImageNumThreshold *
+			//(m_one->m_fm.m_minImageNumThreshold - 1) / 2)
+			mininum * (mininum - 1) / 2)
+			ret = 2.0f;
+		else
+			ret = ans / denom + bias;
+	}
+	else {
+		if (m_one->m_texsT[id][0].empty())
+			return 2.0;
+
+		double ans = 0.0f;
+		int denom = 0;
+		for (int i = 1; i < size; ++i) {
+			if (m_one->m_texsT[id][i].empty())
+				continue;
+			ans +=
+				robustincc(1.0 - m_one->dot(m_one->m_texsT[id][0], m_one->m_texsT[id][i]));
+			denom++;
+		}
+		//if (denom < m_one->m_fm.m_minImageNumThreshold - 1)
+		if (denom < mininum - 1)
+			ret = 2.0f;
+		else
+			ret = ans / denom + bias;
+	}
+
+	return ret;
+}
+
 bool Coptim::refinePatchBFGS(Cpatch& patch, const int id,
                              const int time, const int ncc)
 {
@@ -625,7 +795,7 @@ bool Coptim::refinePatchBFGS(Cpatch& patch, const int id,
   
   computeUnits(patch, m_weightsT[id]);
   for (int i = 1; i < (int)m_weightsT[id].size(); ++i)
-    m_weightsT[id][i] = min(1.0f, m_weightsT[id][0] / m_weightsT[id][i]);  
+    m_weightsT[id][i] = min(1.0f, m_weightsT[id][0] / m_weightsT[id][i]);
   m_weightsT[id][0] = 1.0f;
   
   double p[3];
@@ -698,6 +868,186 @@ bool Coptim::refinePatchBFGS(Cpatch& patch, const int id,
 
   return true;
 }
+
+bool Coptim::refinePatchBFGS_finetune_level1(Cpatch& patch, const int id,
+	const int time, const int ncc)
+{
+	int idtmp = id;
+
+	m_centersT[id] = patch.m_coord;
+	m_raysT[id] = patch.m_coord - m_fm.m_pss.m_photos[patch.m_images[0]].m_center;
+	unitize(m_raysT[id]);
+	m_indexesT[id] = patch.m_images;
+
+	m_dscalesT[id] = patch.m_dscale;
+	m_ascalesT[id] = M_PI / 6.0f;//patch.m_ascale;
+
+	computeUnits(patch, m_weightsT[id]);
+	for (int i = 1; i < (int)m_weightsT[id].size(); ++i)
+		m_weightsT[id][i] = min(1.0f, m_weightsT[id][0] / m_weightsT[id][i]);
+	m_weightsT[id][0] = 1.0f;
+
+	double p[3];
+	encode(patch.m_coord, patch.m_normal, p, id);
+
+	double min_angle = -2.99999;	//(- M_PI / 2.0) / m_one->m_ascalesT[id];
+	double max_angle = 2.99999;	//(M_PI / 2.0) / m_one->m_ascalesT[id];
+
+	std::vector<double> lower_bounds(3);
+	lower_bounds[0] = -HUGE_VAL;  // Not bound
+	lower_bounds[1] = min_angle;
+	lower_bounds[2] = min_angle;
+	std::vector<double> upper_bounds(3);
+	upper_bounds[0] = HUGE_VAL;  // Not bound
+	upper_bounds[1] = max_angle;
+	upper_bounds[2] = max_angle;
+
+	bool success = false;
+
+	try
+	{
+		// LN_NELDERMEAD: Corresponds to the N-Simplex-Algorithm of GSL, that was used originally here
+		// LN_SBPLX
+		// LN_COBYLA
+		// LN_BOBYQA
+		// LN_PRAXIS
+		nlopt::opt opt(nlopt::LN_BOBYQA, 3);
+		opt.set_min_objective(my_f2, &idtmp);
+		opt.set_xtol_rel(1.e-7);
+		opt.set_maxeval(time);
+
+		opt.set_lower_bounds(lower_bounds);
+		opt.set_upper_bounds(upper_bounds);
+
+		std::vector<double> x(3);
+		for (int i = 0; i < 3; i++)
+		{
+			// NLOPT returns an error if x is not within the bounds
+			x[i] = max(min(p[i], upper_bounds[i]), lower_bounds[i]);
+		}
+
+		double minf;
+		nlopt::result result = opt.optimize(x, minf);
+
+		p[0] = x[0];
+		p[1] = x[1];
+		p[2] = x[2];
+
+		success = (result == nlopt::SUCCESS
+			|| result == nlopt::STOPVAL_REACHED
+			|| result == nlopt::FTOL_REACHED
+			|| result == nlopt::XTOL_REACHED);
+	}
+	catch (std::exception &e)
+	{
+		success = false;
+	}
+
+	if (success) {
+		decode(patch.m_coord, patch.m_normal, p, id);
+
+		patch.m_ncc = 1.0 -
+			unrobustincc(computeINCC(patch.m_coord,
+				patch.m_normal, patch.m_images, id, 1));
+
+	}
+	else {
+		return false;
+	}
+
+	return true;
+}
+
+bool Coptim::refinePatchBFGS_finetune_level2(Cpatch& patch, const int id,
+	const int time, const int ncc)
+{
+	int idtmp = id;
+
+	m_centersT[id] = patch.m_coord;
+	m_raysT[id] = patch.m_coord - m_fm.m_pss.m_photos[patch.m_images[0]].m_center;
+	unitize(m_raysT[id]);
+	m_indexesT[id] = patch.m_images;
+
+	m_dscalesT[id] = patch.m_dscale;
+	m_ascalesT[id] = M_PI / 6.0f;//patch.m_ascale;
+
+	computeUnits(patch, m_weightsT[id]);
+	for (int i = 1; i < (int)m_weightsT[id].size(); ++i)
+		m_weightsT[id][i] = min(1.0f, m_weightsT[id][0] / m_weightsT[id][i]);
+	m_weightsT[id][0] = 1.0f;
+
+	double p[3];
+	encode(patch.m_coord, patch.m_normal, p, id);
+
+	double min_angle = -2.99999;	//(- M_PI / 2.0) / m_one->m_ascalesT[id];
+	double max_angle = 2.99999;	//(M_PI / 2.0) / m_one->m_ascalesT[id];
+
+	std::vector<double> lower_bounds(3);
+	lower_bounds[0] = -HUGE_VAL;  // Not bound
+	lower_bounds[1] = min_angle;
+	lower_bounds[2] = min_angle;
+	std::vector<double> upper_bounds(3);
+	upper_bounds[0] = HUGE_VAL;  // Not bound
+	upper_bounds[1] = max_angle;
+	upper_bounds[2] = max_angle;
+
+	bool success = false;
+
+	try
+	{
+		// LN_NELDERMEAD: Corresponds to the N-Simplex-Algorithm of GSL, that was used originally here
+		// LN_SBPLX
+		// LN_COBYLA
+		// LN_BOBYQA
+		// LN_PRAXIS
+		nlopt::opt opt(nlopt::LN_BOBYQA, 3);
+		opt.set_min_objective(my_f2, &idtmp);
+		opt.set_xtol_rel(1.e-7);
+		opt.set_maxeval(time);
+
+		opt.set_lower_bounds(lower_bounds);
+		opt.set_upper_bounds(upper_bounds);
+
+		std::vector<double> x(3);
+		for (int i = 0; i < 3; i++)
+		{
+			// NLOPT returns an error if x is not within the bounds
+			x[i] = max(min(p[i], upper_bounds[i]), lower_bounds[i]);
+		}
+
+		double minf;
+		nlopt::result result = opt.optimize(x, minf);
+
+		p[0] = x[0];
+		p[1] = x[1];
+		p[2] = x[2];
+
+		success = (result == nlopt::SUCCESS
+			|| result == nlopt::STOPVAL_REACHED
+			|| result == nlopt::FTOL_REACHED
+			|| result == nlopt::XTOL_REACHED);
+	}
+	catch (std::exception &e)
+	{
+		success = false;
+	}
+
+	if (success) {
+		decode(patch.m_coord, patch.m_normal, p, id);
+
+		patch.m_ncc = 1.0 -
+			unrobustincc(computeINCC(patch.m_coord,
+				patch.m_normal, patch.m_images, id, 1));
+
+	}
+	else {
+		return false;
+	}
+
+	return true;
+}
+
+
 
 void Coptim::encode(const Vec4f& coord,
 		    double* const vect, const int id) const {

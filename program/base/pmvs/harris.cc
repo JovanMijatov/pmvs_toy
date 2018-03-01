@@ -172,7 +172,7 @@ void Charris::run(const std::vector<unsigned char>& image,
   init(image, mask, edge);
   setDerivatives();  setResponse();
 
-  const int factor = 2;
+  const int factor = 6;
   const int maxPointsGrid = factor * factor;
   const int gridsize = gspeedup * factor;
 
