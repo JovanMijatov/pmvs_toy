@@ -84,6 +84,7 @@ namespace PMVS3 {
             int m_CPU;
             // Threshold on filterQuad
             float m_quadThreshold;
+            int final_optim;
 
             // Maximum number of images used in the optimization
             int m_tau;

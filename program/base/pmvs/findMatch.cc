@@ -47,10 +47,13 @@ void CfindMatch::init(const Soption& option) {
   m_csize = option.m_csize;
   m_nccThreshold = option.m_threshold;
   m_wsize = option.m_wsize;
+  m_wsize_refine_scale_1 = option.m_wsize_level1;
+  m_wsize_refine_scale_2 = option.m_wsize_level2;
   m_minImageNumThreshold = option.m_minImageNum;
   m_CPU = option.m_CPU;
   m_setEdge = option.m_setEdge;
   m_sequenceThreshold = option.m_sequence;
+  final_optim = option.use_final_optim;
 
   m_junit = 100;
   // This initialization does not matter
@@ -233,7 +236,9 @@ void CfindMatch::run(void) {
     
     ++m_depth;
   }
-  finalOptimization();
+  if (final_optim) {
+	  finalOptimization();
+  }
   time(&tv);
   cerr << "---- Total: " << (tv - curtime)/CLOCKS_PER_SEC << " secs ----" << endl;
 }

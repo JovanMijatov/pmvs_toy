@@ -11,13 +11,15 @@ using namespace std;
 using namespace PMVS3;
 
 Soption::Soption(void) {
-  m_level = 1;          m_csize = 2;
-  m_threshold = 0.7;    m_wsize = 7;
-  m_minImageNum = 3;    m_CPU = 4;
+  m_level = 1;          m_csize = 1;
+  m_threshold = 0.7;    m_wsize = 15;
+  m_wsize_level1 = 11;  m_wsize_level2 = 9;
+  m_minImageNum = 3;    m_CPU = 8;
   m_setEdge = 0.0f;     m_useBound = 0;
   m_useVisData = 0;     m_sequence = -1;
   m_tflag = -10;
   m_oflag = -10;
+  use_final_optim = 1;
 
   // Max angle must be at least this big
   m_maxAngleThreshold = 10.0f * M_PI / 180.0f;
@@ -47,6 +49,9 @@ void Soption::init(const std::string prefix, const std::string option) {
     else if (name == "threshold")    ifstr >> m_threshold;
     else if (name == "wsize")        ifstr >> m_wsize;
     else if (name == "minImageNum")  ifstr >> m_minImageNum;
+	else if (name == "wsize_level1") ifstr >> m_wsize_level1;
+	else if (name == "wsize_level2") ifstr >> m_wsize_level2;
+	else if (name == "final_optim?") ifstr >> use_final_optim;
     else if (name == "CPU")          ifstr >> m_CPU;
     else if (name == "setEdge")      ifstr >> m_setEdge;
     else if (name == "useBound")     ifstr >> m_useBound;
