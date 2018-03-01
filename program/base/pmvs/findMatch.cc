@@ -212,18 +212,8 @@ void CfindMatch::run(void) {
   // Expansion
   const int TIME = 3;
   for (int t = 0; t < TIME; ++t) {
-	 // write("test", true, false, false);
     m_expand.run();
-	//if (t == 0) write("exp1noFilter_", true, false, false);
-	//if (t == 1) write("exp2noFilter_", true, false, false);
-	//if (t == 2) write("exp3noFilter_", true, false, false);
-	
     m_filter.run();
-	
-
-	if (t == 0) write("test2", true, false, false);
-	//if (t == 1) write("exp2withFilter_t7", true, false, false);
-        
     updateThreshold();
 
     cout << "STATUS: ";

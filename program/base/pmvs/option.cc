@@ -140,7 +140,8 @@ void Soption::init(const std::string prefix, const std::string option) {
     cerr << " (not used)" << endl;
 
   cerr << "level: " << m_level << "  csize: " << m_csize << endl
-       << "threshold: " << m_threshold << "  wsize: " << m_wsize << endl
+       << "threshold: " << m_threshold << "  wsize: " << m_wsize << endl 
+	   << "wsize on scale 1: " << m_wsize_level1 << "  wsize on scale 2: " << m_wsize_level2 << endl
        << "minImageNum: " << m_minImageNum << "  CPU: " << m_CPU << endl
        << "useVisData: " << m_useVisData << "  sequence: " << m_sequence << endl;
   cerr << "--------------------------------------------------" << endl;
