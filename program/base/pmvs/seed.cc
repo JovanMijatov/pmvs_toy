@@ -433,7 +433,7 @@ int Cseed::initialMatchSub(const int index0, const int index1,
   }
   
   //----------------------------------------------------------------------  
-  m_fm.m_optim.refinePatch(patch, id, 100);
+  m_fm.m_optim.refinePatch(patch, id, 200);
 
   //----------------------------------------------------------------------
   if (m_fm.m_optim.postProcess(patch, id, 1)) {
